@@ -1,0 +1,20 @@
+server:
+  port: 6688
+
+
+# ### Key Grammar of YAML
+# * **Key-Value Pairs:** Data is defined using a colon and a space (`key: value`).
+# * **Indentation:** Hierarchy and nesting are determined by indentation. You must use spaces (tabs are generally not allowed).
+# * **Minimal Syntax:** It avoids brackets and quotation marks for standard objects and strings, prioritizing general readability.
+# * **Comments:** Any line starting with `#` is a comment and is ignored during parsing.
+
+# ### JSON Equivalent
+# JSON expresses the same hierarchical data using curly braces, quotation marks, and commas. Your app.yml file would look like this in `.json` format:
+
+# ```json
+# {
+#   "server": {
+#     "port": 6688
+#   }
+# }
+# ```

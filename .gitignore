@@ -1,1 +1,7 @@
+# git restore --staged chat_server/target/
+# restore: This primarily undoes changes in your Git repository.
+# --staged: This flag targets the "staging area" (the files you queued up with git add).
+
 /target
+/chat_server/target
+**/target
