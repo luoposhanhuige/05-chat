@@ -1,3 +1,4 @@
+// cd chat/chat_server
 // cargo run --bin chat_server
 // curl http://localhost:6688/
 

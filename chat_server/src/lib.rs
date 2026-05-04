@@ -9,17 +9,21 @@
 // As your application grows, you might extract the router into its own file (e.g., src/router.rs) and just export it through lib.rs, but the fundamental principle of keeping it out of main.rs is correct.
 
 mod config;
+mod error;
 mod handlers;
+mod models;
 
 use handlers::*;
 use std::{ops::Deref, sync::Arc};
+
+pub use config::AppConfig;
+pub use error::AppError;
+pub use models::User; // Re-export User so that users of the library can access it directly via chat_server::User instead of chat_server::models::User. // Re-export AppConfig so that users of the library can access it directly via chat_server::AppConfig instead of chat_server::config::AppConfig.
 
 use axum::{
     routing::{get, patch, post},
     Router,
 };
-
-pub use config::AppConfig; // Re-export AppConfig so that users of the library can access it directly via chat_server::AppConfig instead of chat_server::config::AppConfig.
 
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
