@@ -10,7 +10,9 @@ anyhow = { workspace = true }
 argon2 = { version = "0.5.3", features = ["std"] }
 axum = { workspace = true }
 chrono = { version = "0.4.44", features = ["serde"] }
+jwt-simple = "0.12.15"
 serde = { workspace = true }
+serde_json = "1.0.149"
 serde_yaml = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
@@ -19,4 +21,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
+http-body-util = "0.1.3"
+hyper = { version = "1.9.0", features = ["full"] }
 sqlx-db-tester = "0.7.1" #  cargo add sqlx-db-tester --dev, Used for testing with a temporary database

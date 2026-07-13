@@ -1,6 +1,29 @@
 server:
-  port: 6688
+  port: 6688 # ← Chat Server listens here
+  db_url: postgres://postgres:postgres@localhost:5432/chat # ← PostgreSQL connection string, PostgreSQL listens here at 5432, database name is "chat", username and password are both "postgres"
+auth:
+  sk: |
+    -----BEGIN PRIVATE KEY-----
+    MC4CAQAwBQYDK2VwBCIEIGb7G2hs5DE+1AL2DQpKxIBwHn6mYkEhsuntDNjg8L4w
+    -----END PRIVATE KEY-----
+  pk: |
+    -----BEGIN PUBLIC KEY-----
+    MCowBQYDK2VwAyEA/sGpauA6h7yQw+eFOTd+Ff7toufNYDlCVL7g2SUqO5Y=
+    -----END PUBLIC KEY-----
 
+# This YAML is deserialized by serde into your Rust structs by matching keys to field names.
+# Field names must match unless you add #[serde(rename = "...")].
+# If a required field is missing, deserialization fails.
+# AppConfig {
+#     server: ServerConfig {
+#         port: 6688,
+#         db_url: "postgres://postgres:postgres@localhost:5432/chat".to_string(),
+#     },
+#     auth: AuthConfig {
+#         sk: "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n".to_string(),
+#         pk: "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n".to_string(),
+#     },
+# }
 
 # ### Key Grammar of YAML
 # * **Key-Value Pairs:** Data is defined using a colon and a space (`key: value`).
@@ -18,3 +41,343 @@ server:
 #   }
 # }
 # ```
+
+# The highlighted code is in PEM format.
+
+# More specifically:
+
+# sk contains a PEM-encoded private key
+# pk contains a PEM-encoded public key
+# From the headers:
+
+# -----BEGIN PRIVATE KEY----- → PKCS#8 PEM private key
+# -----BEGIN PUBLIC KEY----- → SubjectPublicKeyInfo PEM public key
+# And based on your earlier openssl genpkey -algorithm ed25519, these are Ed25519 keys encoded as Base64 inside PEM blocks.
+
+
+# **PEM** stands for **Privacy-Enhanced Mail**, but in practice it is a standard text format for storing cryptographic data such as:
+
+# - private keys
+# - public keys
+# - certificates
+
+# ## What PEM looks like
+
+# PEM is plain text with:
+
+# - a header line
+# - Base64-encoded data
+# - a footer line
+
+# Example structure:
+
+# - `-----BEGIN PRIVATE KEY-----`
+# - `...base64 text...`
+# - `-----END PRIVATE KEY-----`
+
+# So PEM is **text**, not binary.
+
+# ## Why it can be included inside `.yml`
+
+# Because YAML can store **multi-line strings**.
+
+# In your file:
+
+# ```yaml
+# sk: |
+#   -----BEGIN PRIVATE KEY-----
+#   ...
+#   -----END PRIVATE KEY-----
+# ```
+
+# the `|` means:
+
+# - treat the following indented lines as one literal multi-line string
+# - preserve line breaks
+
+# So YAML is not interpreting the PEM contents as YAML syntax. It is just storing that PEM block as a string value.
+
+# ## In short
+
+# - **PEM** = text format for keys/certificates
+# - **YAML** can hold multi-line text values
+# - therefore PEM can be embedded inside YAML without any problem
+
+# If wanted, I can also explain the meaning of the `|` symbol in YAML more precisely.
+
+
+
+# /*
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    OPERATING SYSTEM                         │
+# │                   (macOS, Linux, Windows)                   │
+# │                                                             │
+# │  Port Management Layer (Kernel)                            │
+# │  ┌───────────────────────────────────────────────────────┐ │
+# │  │                                                       │ │
+# │  │  Port Table (Maintained by OS Kernel):              │ │
+# │  │  ─────────────────────────────────────────────       │ │
+# │  │  Port 6688: Chat Server (Axum)        [LISTENING]   │ │
+# │  │  Port 5432: PostgreSQL Database       [LISTENING]   │ │
+# │  │  Port 22:   SSH                       [LISTENING]   │ │
+# │  │  Port 80:   HTTP                      [LISTENING]   │ │
+# │  │  Port 443:  HTTPS                     [LISTENING]   │ │
+# │  │  ...                                                 │ │
+# │  │                                                       │ │
+# │  │  Socket States (OS tracks connections):             │ │
+# │  │  ┌─────────────────────────────────────────────┐   │ │
+# │  │  │ 127.0.0.1:54321 ↔ 127.0.0.1:6688 [ESTAB]   │   │ │
+# │  │  │ 127.0.0.1:54322 ↔ 127.0.0.1:6688 [ESTAB]   │   │ │
+# │  │  │ 127.0.0.1:59001 ↔ 127.0.0.1:5432 [ESTAB]   │   │ │
+# │  │  └─────────────────────────────────────────────┘   │ │
+# │  │                                                       │ │
+# │  └───────────────────────────────────────────────────────┘ │
+# │                                                             │
+# └─────────────────────────────────────────────────────────────┘
+#            ↓
+#     OS enforces:
+#     ✓ Only one process per port (bind rules)
+#     ✓ Routing of packets to correct port
+#     ✓ Connection tracking (state machine)
+#     ✓ Memory management for buffers
+#     ✓ Permission checks
+# */
+
+
+# Port Categories Explained
+# /*
+# ┌──────────────────────────────────────────────────────────────┐
+# │              PORT NUMBER RANGES BY CATEGORY                  │
+# └──────────────────────────────────────────────────────────────┘
+
+# WELL-KNOWN PORTS (0-1023)
+# ═══════════════════════════════════════════════════════════════
+# Reserved by IANA (Internet Assigned Numbers Authority)
+# Standardized protocols use these:
+
+# Port  Service      Protocol   Purpose
+# ────  ───────────  ─────────  ─────────────────────────────
+# 21    FTP          TCP        File Transfer Protocol
+# 22    SSH          TCP        Secure Shell
+# 25    SMTP         TCP        Email sending
+# 53    DNS          UDP/TCP    Domain Name System
+# 80    HTTP         TCP        Web (unencrypted) ← STANDARD
+# 110   POP3         TCP        Email retrieval
+# 143   IMAP         TCP        Email (IMAP4)
+# 443   HTTPS        TCP        Web (encrypted) ← STANDARD
+# 3306  MySQL        TCP        Database
+# 5432  PostgreSQL   TCP        Database
+# ────  ───────────  ─────────  ─────────────────────────────
+
+# Examples in your app:
+# ✓ Port 5432 → PostgreSQL (standard/well-known)
+# ✗ Port 6688 → Chat Server (custom/arbitrary)
+
+
+# REGISTERED PORTS (1024-49151)
+# ═══════════════════════════════════════════════════════════════
+# Can be registered with IANA for specific services
+# Or used by applications needing high numbers
+
+# Port    Service              Purpose
+# ──────  ─────────────────    ─────────────────────────────
+# 1433    Microsoft SQL Server Database
+# 3000    Node.js dev default  Development web servers
+# 5000    Flask/Python dev     Development web servers
+# 6379    Redis                In-memory cache
+# 8000    Django dev           Development web servers
+# 8080    Proxy/Alt HTTP       Alternative HTTP
+# 9000    Hadoop               Big data processing
+# 27017   MongoDB              Database
+# ────────  ─────────────────    ─────────────────────────────
+
+# Your choice of 6688:
+# ✓ Falls in this range
+# ✓ Not registered
+# ✓ Arbitrary choice for your app
+# ✓ Common for development
+
+
+# DYNAMIC/PRIVATE PORTS (49152-65535)
+# ═══════════════════════════════════════════════════════════════
+# Ephemeral ports, auto-assigned by OS for client connections
+
+# Example:
+# Client browser → OS assigns ephemeral port (e.g., 54321)
+#                 → Connects to server:6688
+#                 → Connection tuple: 127.0.0.1:54321 ↔ 127.0.0.1:6688
+
+# */
+
+
+
+# Port is an Index to Point to a Process
+# Exactly! Port is like an index/address used by the OS to route data to the correct process. Let me explain:
+
+# /*
+# ┌──────────────────────────────────────────────────────┐
+# │             PORT AS AN INDEX                         │
+# ├──────────────────────────────────────────────────────┤
+# │                                                      │
+# │  Think of ports like:                               │
+# │  • Apartment numbers in a building                  │
+# │  • Mailbox numbers at a post office                 │
+# │  • Channel numbers on TV                            │
+# │  • House addresses on a street                      │
+# │                                                      │
+# │  Each port number → unique process/service          │
+# │                                                      │
+# │  Port Table (maintained by OS kernel):              │
+# │  ═════════════════════════════════════════         │
+# │  Index    Service              Process              │
+# │  ─────    ──────────────────   ─────────────       │
+# │  22       SSH                  sshd (PID: 100)     │
+# │  53       DNS                  systemd-resolve     │
+# │  80       HTTP                 nginx (PID: 200)    │
+# │  443      HTTPS                nginx (PID: 200)    │
+# │  3306     MySQL                mysqld (PID: 300)   │
+# │  5432     PostgreSQL           postgres (PID: 400) │
+# │  6688     Chat Server ←── ← ← ← chat_server       │
+# │           (YOUR APP)           (PID: 500)          │
+# │  8000     Django               python (PID: 600)   │
+# │  9000     Node.js              node (PID: 700)     │
+# │                                                      │
+# │  When packet arrives:                              │
+# │  Packet destination port: 6688                     │
+# │                  ↓                                  │
+# │  OS looks up port 6688 in table                    │
+# │          ↓                                          │
+# │  Finds: chat_server (PID: 500)                     │
+# │          ↓                                          │
+# │  Routes packet to that process                     │
+# │                                                      │
+# └──────────────────────────────────────────────────────┘
+# */
+
+# Port Range Explained
+
+# # ============ PORT RANGE (0 to 65535) ============
+
+# Total ports: 2^16 = 65,536 ports (0-65535)
+#                     ↑
+#               16-bit unsigned integer
+#               (port is stored as u16)
+
+
+# ┌─────────────────────────────────────────────────────┐
+# │                PORT RANGES BY TYPE                  │
+# ├─────────────────────────────────────────────────────┤
+# │                                                     │
+# │  0 - 1,023: WELL-KNOWN PORTS (Reserved)            │
+# │  ├─ 0:       Reserved                              │
+# │  ├─ 22:      SSH                                   │
+# │  ├─ 25:      SMTP (Email)                          │
+# │  ├─ 53:      DNS                                   │
+# │  ├─ 80:      HTTP                                  │
+# │  ├─ 110:     POP3 (Email)                          │
+# │  ├─ 143:     IMAP (Email)                          │
+# │  ├─ 443:     HTTPS                                 │
+# │  └─ 1023:    Last well-known port                  │
+# │                                                     │
+# │  1,024 - 49,151: REGISTERED PORTS (User/Apps)     │
+# │  ├─ 1024:    First in this range                   │
+# │  ├─ 3000:    Node.js (development)                 │
+# │  ├─ 3306:    MySQL                                 │
+# │  ├─ 5000:    Flask (development)                   │
+# │  ├─ 5432:    PostgreSQL                            │
+# │  ├─ 6379:    Redis                                 │
+# │  ├─ 6688:    Your Chat Server ← ← ← ← ← ← ← HERE │
+# │  ├─ 8000:    Django (development)                  │
+# │  ├─ 8080:    Proxy/Alternative HTTP                │
+# │  ├─ 8443:    Alternative HTTPS                     │
+# │  ├─ 9000:    Hadoop, Play Framework                │
+# │  ├─ 27017:   MongoDB                               │
+# │  └─ 49151:   Last in this range                    │
+# │                                                     │
+# │  49,152 - 65,535: DYNAMIC/EPHEMERAL PORTS          │
+# │  ├─ 49152:   First ephemeral                       │
+# │  ├─ 54321:   Assigned to client (auto)             │
+# │  ├─ 54322:   Another client (auto)                 │
+# │  ├─ 59001:   Another connection (auto)             │
+# │  └─ 65535:   Last port available                   │
+# │                                                     │
+# └─────────────────────────────────────────────────────┘
+
+
+# ┌─────────────────────────────────────────────────────┐
+# │             VISUAL PORT RANGE MAP                   │
+# ├─────────────────────────────────────────────────────┤
+# │                                                     │
+# │  0 ┌─────────────────────────────────────┐ 65535  │
+# │    │                                     │        │
+# │    │ Well-Known   Registered  Dynamic    │        │
+# │    │ Reserved     User/Apps   Ephemeral  │        │
+# │    │ 0-1023      1024-49151  49152-65535 │        │
+# │    │ (Admin)     (Apps)      (Clients)   │        │
+# │    │                                     │        │
+# │    │    ↑            ↑           ↑       │        │
+# │    │    │            │           │       │        │
+# │    │   SSH         My App      Browsers  │        │
+# │    │   HTTP       (6688)       (Random)  │        │
+# │    │   HTTPS      Database     Clients   │        │
+# │    │                                     │        │
+# │    └─────────────────────────────────────┘        │
+# │    0                                     65535     │
+# │                                                     │
+# └─────────────────────────────────────────────────────┘
+
+
+# Total breakdown:
+# ═════════════════════════════════════════════════════
+# Well-known (0-1023):        1,024 ports
+# Registered (1024-49151):   48,128 ports  ← 6688 here
+# Dynamic (49152-65535):     16,384 ports
+#                            ─────────────
+# Total:                     65,536 ports
+# ```
+
+# ---
+
+# ## How OS Uses Port as Index
+
+# ````rust
+# // filepath: How kernel port table works
+
+# /*
+# ┌────────────────────────────────────────────────────────┐
+# │         OS KERNEL PORT TABLE (Simplified)              │
+# ├────────────────────────────────────────────────────────┤
+# │                                                        │
+# │  struct socket {                                       │
+# │      u16 port;              // Port number (index)    │
+# │      u32 pid;               // Process ID              │
+# │      char *process_name;    // Process name            │
+# │      struct buffer *rx_buf; // Receive buffer          │
+# │      struct buffer *tx_buf; // Transmit buffer         │
+# │      u16 state;             // LISTENING/ESTABLISHED   │
+# │      ...                                               │
+# │  };                                                    │
+# │                                                        │
+# │  socket_table[65536];  // Array index by port number  │
+# │                                                        │
+# │  When app binds to port 6688:                         │
+# │  ───────────────────────────────────                 │
+# │  socket_table[6688].port = 6688                      │
+# │  socket_table[6688].pid = 500              // ChatApp │
+# │  socket_table[6688].state = LISTENING                │
+# │                                                        │
+# │  When packet arrives on port 6688:                    │
+# │  ───────────────────────────────────────             │
+# │  packet.dest_port = 6688  // From network packet     │
+# │            ↓                                          │
+# │  lookup: socket = socket_table[6688]                 │
+# │            ↓                                          │
+# │  Find: pid = 500 (chat_server process)               │
+# │            ↓                                          │
+# │  Enqueue packet to socket's rx_buf                   │
+# │            ↓                                          │
+# │  Wake up process 500                                 │
+# │                                                        │
+# └────────────────────────────────────────────────────────┘
+# */
+
